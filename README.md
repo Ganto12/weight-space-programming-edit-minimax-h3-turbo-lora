@@ -4,9 +4,11 @@ MiniMax H3 is a joint audio and video diffusion transformer (DiT). Its community
 
 It has an annoying side effect. On prompts that ask for a silent reaction, Turbo-8 often adds a voice: a word, or seconds of gibberish, usually over a closed mouth. A production scan flagged **538 of 1,586 Turbo-8 clips (34%)**.
 
-We fixed most of it by **editing the LoRA's weights**: no gradients, no training, no extra inference cost. We also made the same Turbo-8 lane **1.58x faster** by switching attention to 8-bit.
+**The question we tested.** The full 20-step model, with no speed LoRA, handles silence far better. On the same 30 held-out prompts and seeds it talks on 3 clips, against 9 for Turbo-8, with 0.38 s of stray voice per clip against 0.93 s. So the voice looks like a side effect of distilling the model into a fast LoRA. Could **weight-space programming** remove that side effect by editing the LoRA's weights directly, with no gradients, no retraining and no extra inference cost?
 
-> **Status: early findings.** Two follow-up experiments are running. See [Status](#status).
+Mostly, yes. One edit cuts the stray speech 4.3x, though it costs some motion. Along the way we also made the same Turbo-8 lane **1.58x faster** by switching attention to 8-bit.
+
+> **Status: early findings and a proof of concept.** Samples are small and the motion cost is not solved. We think it is worth exploring in more depth: the block map below already points to a cleaner target. See [Status](#status).
 
 ---
 
@@ -112,6 +114,29 @@ We also checked whether quantizing to 4-bit damages skin. It does, and the damag
 
 ---
 
+## Where the speech lives: LoRA block map
+
+We switched the speed LoRA off in one 5-block slice at a time and rendered the 6 hardest talkers (never used for fitting). Every arm is paired with a fresh shipped render on the same box and seed (2.65 s mean voice).
+
+| LoRA off in | Speech | Silent of 6 | Motion | Face sharpness |
+|---|---|---|---|---|
+| Blocks 0-24 (each slice) | −4% to +3% | 0 | 0.99-1.01 | 0.95-1.02 |
+| **Blocks 25-29** | **−34%** | 1 | **0.99** | 0.97 |
+| Blocks 30-34 | −27% | 1 | 0.95 | 1.10 |
+| Blocks 35-39 | −29% | 1 | 0.81 | 1.08 |
+| Blocks 40-44 | −34% | 2 | 0.87 | 1.05 |
+| Blocks 45-49 | −10% | 0 | 0.87 | 0.70 (audio broken) |
+| Attention only, blocks 25-29 | −21% | 0 | 1.01 | 1.02 |
+| MLP only, blocks 25-29 | +3% | 0 | 0.98 | 1.00 |
+
+- The first half of the network (blocks 0-24) adds no speech.
+- Switching off blocks 25-29 is the cleanest speech cut found so far: −34% speech at 0.99 motion. S4 at half strength gave −23% at 0.84 motion.
+- In blocks 25-29, attention alone gives −21% and the MLP alone gives nothing. The rest of the cut likely sits in the modulation (adaLN) weights, which is untested.
+- Blocks 40-44 cut as much speech but cost motion. The last 5 blocks carry fine detail and audio texture.
+- Only 6 seeds. Combining blocks 25-34 was not tested.
+
+---
+
 ## What did not work
 
 | Idea | Result |
@@ -119,6 +144,7 @@ We also checked whether quantizing to 4-bit damages skin. It does, and the damag
 | Edit only the audio output head (cannot touch video) | Motion untouched, but speech fell only 3% |
 | Crosscoder speech feature at block 30, step 1 of 8 | Best feature cut speech 3.7%; random control −2.4% |
 | Light text encoder (truncate + closed-form fit) | Failed its accuracy gate; text encode is only 1.8 s of 37 s anyway |
+| Cached S4 delta on audio tokens (captured once, added at run time) | Silenced all 6 talkers but wiped room sound too (−24 dB); a random push of the same size did the same. Not speech-specific. Video untouched (motion 0.94-1.01) |
 
 The audio-head and crosscoder results point the same way. Step-1 activations barely predict voice, which suggests speech forms in later steps, spread over blocks 31-44 (untested).
 
@@ -126,12 +152,15 @@ The audio-head and crosscoder results point the same way. Step-1 activations bar
 
 ## Status
 
-Running now (2026-11-16):
+Done 2026-11-16:
 
-- [ ] **Cached speech-off toggle.** Capture once how S4 changes the audio activations at every block and step. Then add that change back at run time with a strength knob. Tested on 6 unseen talkers against a random control.
-- [ ] **LoRA speech map.** Switch the LoRA off one 5-block slice at a time to find where the speech comes from.
+- [x] **LoRA speech map.** Switching the LoRA off in blocks 25-29 is the cleanest cut so far (−34% speech at 0.99 motion, 6 seeds). See above.
+- [x] **Cached speech-off toggle.** Failed: at strength 1-2 it flattens all audio, and a random control does the same.
 
 To do:
+
+- [ ] **Blocks 25-34, attention only, on more seeds.** Combine the two clean slices and test on 30 held-out prompts.
+- [ ] **Cached delta at low strength (0.1-0.5).** Check whether speech goes before room sound, with a random control at each strength.
 
 - [ ] **Crosscoder, aimed right.** Retrain it at the blocks and steps the map points to, to find a speech switch that spares motion. Then bake the winner into the LoRA weights.
 
