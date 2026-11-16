@@ -1,4 +1,4 @@
-# Weight-space programming with MiniMax H3 LoRAs
+# Weight-space programming edit: MiniMax H3 Turbo LoRA
 
 MiniMax H3 is a joint audio and video diffusion transformer (DiT). Its community **Turbo-8** speed LoRA samples in 8 steps instead of 20. That makes clips about 2x faster and about half the price (58.6 s vs 120.3 s per 3 s clip on one RTX 5090).
 
@@ -12,21 +12,21 @@ We fixed most of it by **editing the LoRA's weights**: no gradients, no training
 
 ## The fix, side by side
 
-Same prompt and seed in each pair. Click a still to play it. The shipped clip plays first with its sound, then the S4 clip plays with its sound.
+Same prompt and seed in each pair. Press play with sound on. The shipped clip plays first with its sound, then the S4 clip plays with its sound.
 
-[![Shipped vs S4: fanning](media/seq_fanning.jpg)](media/seq_fanning.mp4)
+https://github.com/user-attachments/assets/462f13c8-cff8-43de-878a-f8d545af71df
 
-[![Shipped vs S4: book peek](media/seq_book_peek.jpg)](media/seq_book_peek.mp4)
+https://github.com/user-attachments/assets/7cd3c078-63d0-4c2d-a168-85f5ff750d62
 
-[![Shipped vs S4: hair whip](media/seq_hair_whip.jpg)](media/seq_hair_whip.mp4)
+https://github.com/user-attachments/assets/39a045cf-4755-4f3e-a983-b6adf965a715
 
-[![Shipped vs S4: brow raise and wink](media/seq_brow_wink.jpg)](media/seq_brow_wink.mp4)
+https://github.com/user-attachments/assets/077ee24f-e791-41e0-9db1-8144456489a3
 
-[![Shipped vs S4: clay mask](media/seq_clay_mask.jpg)](media/seq_clay_mask.mp4)
+https://github.com/user-attachments/assets/d689737a-5bdf-4a55-8da5-5ba77c00589a
 
 The cost, shown honestly. On some seeds the edit also stills the motion:
 
-[![Shipped vs S4: frozen](media/s4_cost_peek.jpg)](media/s4_cost_peek.mp4)
+https://github.com/user-attachments/assets/340a8658-243a-48ff-a16b-d6967466ce2b
 
 ---
 
